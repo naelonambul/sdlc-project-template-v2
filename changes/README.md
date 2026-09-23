@@ -37,11 +37,13 @@ stage:      intent | spec | plan | implementation | closed
 freshness:  current | stale | frozen
 approval:   none | unverified | verified
 readiness:  blocked | ready
+closure:    none | candidate | invalid | frozen
 ```
 
 - **Order.** Approvals follow `intent -> spec -> plan`, both in chain position and in timestamp order. A downstream approval without its upstream approval blocks.
 - **Freshness.** `stale` means a recorded `baseline` digest no longer matches the root file, or an approval is bound to bytes that have since changed. A stale change is blocked until it is refreshed and re-approved.
 - **Readiness.** `ready` means every chain artifact carries a current approval and nothing blocks. While a change is not ready, only its own packet may change. Any other changed path blocks.
+- **Closure.** A `closure.json` on an unmerged branch is a `candidate`, which CI validates. Once the baseline branch contains it, it is `frozen` at its anchor. Any error makes it `invalid`. `stage` becomes `closed` as soon as `closure.json` exists, before merge.
 
 ## Approval claims
 
@@ -63,6 +65,34 @@ An agent-side hook or tool policy that refuses agent edits to `approvals` adds f
 - **Pull request.** The body carries `Change-ID: <id>`. CI passes it explicitly, and a missing, repeated or unknown ID blocks. One PR is one change.
 - **Scope.** Every changed path between the base (the PR base, or the merge-base with the baseline branch) and the candidate must fall inside `changes/<id>/` or match a `write_scope` pattern (`*`, `?`, `**`, trailing `/`). Patterns are relative POSIX paths with no `.` or `..` segments.
 
+## Lifecycle
+
+The ordered path for every change, with what `python3 scripts/repo.py status --change <id>` reports:
+
+| Step | Action | Expected status |
+|---|---|---|
+| 1 | Create the packet; draft artifacts in chain order | `stage=<first unapproved artifact>`, `readiness=blocked` |
+| 2 | The owner approves each artifact in order; record digest-bound claims | after the last: `stage=implementation readiness=ready` |
+| 3 | Implement inside `write_scope`; run `repo.py verify --change <id>`, and `--full` before closing | unchanged |
+| 4 | Merge accepted change-local `intent.md`/`spec.md` into the root; verify again | unchanged |
+| 5 | Add a candidate `closure.json` citing the step 4 evidence | `stage=closed freshness=current readiness=ready closure=candidate` |
+| 6 | Commit, push, and open one pull request with `Change-ID: <id>` | the CI `status` job validates the candidate |
+| 7 | CI `summary` must pass on the head that contains `closure.json`; record the result in the pull request | unchanged |
+| 8 | Human review and approval on the provider; squash merge | — |
+| 9 | The post-merge `push` run on the baseline branch passes; confirm the anchor | `stage=closed freshness=frozen closure=frozen`, anchored at the merge (squash) commit |
+
+Evidence rules:
+
+- **Cite only existing evidence.** A closure cites only evidence that exists when it is written, normally the local `verify` evidence from step 4. It never cites the CI run of its own pull request, which cannot exist yet.
+- **CI results go in the pull request.** Record CI results in the pull request description or a comment, not in `closure.json`. The required `summary` check is the merge gate.
+- **Fixes after closure.** If CI or review needs another commit after the closure exists, that same commit:
+  - re-runs local verification;
+  - replaces the closure's `evidence` with the new references;
+  - recomputes `packet_sha256` only if a packet file changed, and `baseline` only if a carried root artifact changed.
+
+  `packet_sha256` excludes `closure.json`, so updating `evidence` never changes it. No commit is made only to cite a CI run.
+- **After merge.** The packet is frozen. Record follow-up work as a new change.
+
 ## Closure
 
 To close a change:
@@ -71,8 +101,10 @@ To close a change:
 2. Add `closure.json`:
 
 ```json
-{"schema": 1, "baseline": {"spec.md": "sha256:<resulting root digest>"}, "packet_sha256": "sha256:<packet digest>", "evidence": ["<CI run or verify evidence reference>"]}
+{"schema": 1, "baseline": {"spec.md": "sha256:<resulting root digest>"}, "packet_sha256": "sha256:<packet digest>", "evidence": ["<local verify evidence reference>"]}
 ```
+
+See Lifecycle for when to add the closure and which evidence it may cite.
 
 `baseline` lists exactly the root artifacts the packet carries. `packet_sha256` covers the packet without `closure.json`. The closure never names a commit.
 
