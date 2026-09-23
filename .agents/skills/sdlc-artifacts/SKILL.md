@@ -19,7 +19,7 @@ The lifecycle rules are executable. `python3 scripts/repo.py status --change <id
 
 ## Develop each artifact in order
 
-- **Intent.** Interrogate ambiguity before drafting: problem, outcome, affected users and systems, constraints, scope, success criteria, and open questions. Any agent-specific interrogation interface is a convenience only.
+- **Intent.** Interrogate ambiguity before drafting: problem, outcome, affected users and systems, constraints, scope, success criteria, and open questions. Any agent-specific interrogation interface is a convenience only. The intent describes the product and its outcomes. Do not put SDLC process goals in it: CI, pull request, verification, check registration, or closure criteria belong in the change's plan.
 - **Spec.** Only after the intent is approved. Turn it into requirements, behavior, design, interfaces, data, dependencies, risks, and acceptance criteria. Carry unresolved questions forward instead of inventing answers.
 - **Plan.** Only after the spec is approved, or inherited for kinds that carry no spec. Write it so an agent with no conversation history can implement it: files and components, order of work, proof, risks, and rollback. Challenge the riskiest step.
 
@@ -40,4 +40,12 @@ Never let a downstream artifact silently contradict an approved upstream one. Su
 
 ## Close
 
-Follow the Closure section of `changes/README.md`: merge accepted deltas into the root, add `closure.json` with evidence, and let CI validate the candidate. After merge the packet is frozen: never edit it again. Record follow-up work as a new change.
+Follow the Lifecycle and Closure sections of `changes/README.md`:
+
+1. Verify locally (`repo.py verify --change <id>`, and `--full`).
+2. Merge accepted change-local `intent.md`/`spec.md` into the root and verify again.
+3. Add a candidate `closure.json` citing only that existing local evidence. `status` then reports `stage=closed closure=candidate`.
+4. Commit, push, and open the pull request. CI `summary` must pass on the closure-containing head. Record CI results in the pull request, never in the closure.
+5. After human review and a squash merge, confirm `status` on the baseline branch reports `freshness=frozen closure=frozen`.
+
+Fixes after the closure exists refresh its `evidence` in the same commit; see `changes/README.md`, Lifecycle. After merge the packet is frozen: never edit it again. Record follow-up work as a new change.
