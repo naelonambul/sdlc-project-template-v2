@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "id": "agent-identity-proof",
+  "kind": "repository",
+  "title": "Disposable proof that pushes and PRs are attributed to the naelonambul-agent App (never merge)",
+  "base": {"ref": "main", "commit": "700b88325e783364d9d976e584b45cd29f0fbbd4"},
+  "baseline": {},
+  "write_scope": [],
+  "approvals": []
+}
