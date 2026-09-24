@@ -53,6 +53,8 @@ CLI and program installation are machine responsibilities. The repository stores
 Included shared skills:
 
 - `sdlc-artifacts`
+- `change-execution`
+- `verification-map`
 - `repository-quality`
 - `context7`
 - `serena`
@@ -60,7 +62,7 @@ Included shared skills:
 
 Optional tool unavailability must not silently change the SDLC gates.
 
-Claude Code discovers these skills through thin `.claude/skills/<name>` symlinks to `.agents/skills/<name>`, and loads `AGENTS.md` only when no project `CLAUDE.md` shadows it. The template therefore ships no `CLAUDE.md`. See `docs/agent-surfaces.md` for the smoke-tested surfaces and known gaps.
+Claude Code discovers these skills through thin `.claude/skills/<name>` symlinks to `.agents/skills/<name>`, and loads `AGENTS.md` only when no project `CLAUDE.md` shadows it. The template therefore ships no `CLAUDE.md`. Codex reads `AGENTS.md` and discovers `.agents/skills/` natively, with no adapter. See `docs/agent-surfaces.md` for the smoke-tested surfaces and known gaps.
 
 ## Project initialization
 

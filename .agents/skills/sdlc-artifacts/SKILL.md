@@ -21,7 +21,7 @@ The lifecycle rules are executable. `python3 scripts/repo.py status --change <id
 
 - **Intent.** Interrogate ambiguity before drafting: problem, outcome, affected users and systems, constraints, scope, success criteria, and open questions. Any agent-specific interrogation interface is a convenience only. The intent describes the product and its outcomes. Do not put SDLC process goals in it: CI, pull request, verification, check registration, or closure criteria belong in the change's plan.
 - **Spec.** Only after the intent is approved. Turn it into requirements, behavior, design, interfaces, data, dependencies, risks, and acceptance criteria. Carry unresolved questions forward instead of inventing answers.
-- **Plan.** Only after the spec is approved, or inherited for kinds that carry no spec. Write it so an agent with no conversation history can implement it: files and components, order of work, proof, risks, and rollback. Challenge the riskiest step.
+- **Plan.** Only after the spec is approved, or inherited for kinds that carry no spec. Write it so an agent with no conversation history can implement it: files and components, order of work, proof, risks, and rollback. Challenge the riskiest step. Make each Order-of-work step name the files it changes and one command that proves it, so it can become a unit brief.
 
 Never let a downstream artifact silently contradict an approved upstream one. Surface the conflict to the owner.
 
@@ -35,6 +35,7 @@ Never let a downstream artifact silently contradict an approved upstream one. Su
 
 - Implement only when `status --change <id>` reports `readiness=ready`. Before that, change nothing outside the packet.
 - Read the approved intent, spec and plan throughout. The plan is not the only authority.
+- To delegate, follow the `change-execution` skill.
 - If a material departure from the approved plan is needed, stop, revise `plan.md`, and get a fresh owner approval.
 - Never revise an approved upstream artifact to make implementation easier or to justify code after the fact.
 
