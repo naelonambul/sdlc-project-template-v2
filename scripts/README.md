@@ -5,6 +5,7 @@ Repository-controlled, deterministic behavior. Standard-library Python and Git o
 - `repo.py`: the control plane.
   - `status` computes change state and enforces lifecycle, approval, identity, write-scope, and agent-surface gates.
   - `verify` runs the checks registered in `../checks.json`.
+  - `new` creates a change packet from `../changes/_template/` with `base`, `baseline` and the required root copies filled in.
 - `tests/`: `unittest` fixtures for `repo.py`. Every hard guard has a failing negative case and a passing positive control. Run `python3 -m unittest discover -s scripts/tests -t .` from the repository root.
 - `hooks/`: optional, agent-neutral guardrails that agent-specific hook configuration may call.
 
