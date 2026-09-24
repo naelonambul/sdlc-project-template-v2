@@ -66,11 +66,11 @@ Claude Code discovers these skills through thin `.claude/skills/<name>` symlinks
 
 ## Project initialization
 
-When a project chooses its application stack, establish the repository-native build, test, lint, format-check, and type-check commands. Register each as a check in `checks.json`, and give checks that need a new toolchain their own group and CI job. Then do the one-time GitHub setup in `docs/host-setup.md`.
+When a project chooses its application stack, establish the repository-native build, test, lint, format-check, and type-check commands. Register each as a check in `checks.json`, and give checks that need a new toolchain their own group and CI job. Then do the one-time GitHub setup in `docs/host-setup.md`. An existing repository adopts the template through `docs/adoption.md` instead of starting with `product-init`.
 
 ## Template releases
 
-Template versions are Git tags plus release notes. A downstream project adopts a tag, not a moving `main`. Settings such as branch protection are never inherited from a GitHub template and must be configured per repository.
+Template versions are Git tags plus release notes. A downstream project adopts a tag, not a moving `main`; `docs/adoption.md` covers adopting and upgrading. Settings such as branch protection are never inherited from a GitHub template and must be configured per repository.
 
 ## Source material
 
