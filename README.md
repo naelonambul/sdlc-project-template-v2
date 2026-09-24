@@ -19,7 +19,7 @@ The root `intent.md` and `spec.md` are the durable product baseline. A new produ
 ## Quick start
 
 1. Create a new repository from this GitHub template and clone it.
-2. Copy `changes/_template/` to `changes/<id>/` for a `product-init` change, with copies of the root `intent.md` and `spec.md`.
+2. Create the `product-init` packet: `python3 scripts/repo.py new <id> --kind product-init --title "<summary>"`. It copies the root `intent.md` and `spec.md` into the packet.
 3. Ask an agent to interrogate the idea until the intent is concrete, then approve `intent.md` by adding a digest-bound claim to `change.json`.
 4. Draft and approve `spec.md`, then the change's `plan.md`, in that order.
 5. Implement only when `python3 scripts/repo.py status --change <id>` reports `readiness=ready`.

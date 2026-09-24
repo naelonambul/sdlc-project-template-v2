@@ -14,7 +14,7 @@ Each unit of work is a **change packet**, `changes/<id>/`. The root `intent.md` 
 | `plan.md` | How the change is implemented and proven. |
 | `closure.json` | Created only when the change closes. |
 
-Start from `changes/_template/`. For a change-local `intent.md` or `spec.md`, copy the current root file and edit the copy. It replaces the root file whole when the change closes, which makes "merged into the baseline" checkable byte for byte.
+Create a packet with `python3 scripts/repo.py new <id> --kind <kind> --title <summary> [--scope <pattern>]...`, run from the change's branch point, because it records `HEAD` as `base.commit`. It creates no branch, commit or approval; `status` remains the judge of the result. Copying `changes/_template/` by hand is the fallback. For a change-local `intent.md` or `spec.md`, copy the current root file and edit the copy. It replaces the root file whole when the change closes, which makes "merged into the baseline" checkable byte for byte.
 
 ## Kinds
 

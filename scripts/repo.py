@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository control plane: `status` and `verify`.
+"""Repository control plane: `status`, `verify` and `new`.
 
 Standard library only. `status` computes change lifecycle state from the
 repository's facts and authored claims; nothing it reports is stored as a
@@ -1021,6 +1021,111 @@ def cmd_status(args) -> int:
     return 0 if result["ok"] else 1
 
 
+class Refusal(Exception):
+    pass
+
+
+def plan_skeleton(root: Path) -> bytes:
+    """The repository's plan skeleton, else the one shipped beside this repo.py."""
+    for base in (root, Path(__file__).resolve().parent.parent):
+        path = base / CHANGES / TEMPLATE_PACKET / "plan.md"
+        if path.is_file():
+            return path.read_bytes()
+    raise Refusal(f"no plan skeleton: {CHANGES}/{TEMPLATE_PACKET}/plan.md not found in the repository or beside repo.py")
+
+
+def new_packet_files(root: Path, args) -> dict[str, bytes]:
+    """Validate the request and return the packet's files; raise Refusal when it cannot be created."""
+    cid, kind = args.id, args.kind
+    if cid == TEMPLATE_PACKET or not ID_RE.match(cid):
+        raise Refusal(f"invalid change id {cid!r}: use lowercase letters, digits and inner hyphens (max 64)")
+    if kind not in KINDS:
+        raise Refusal(f"kind must be one of {sorted(KINDS)}")
+    if not args.title.strip():
+        raise Refusal("title must not be empty")
+    target = root / CHANGES / cid
+    if target.exists() or target.is_symlink():
+        raise Refusal(f"{CHANGES}/{cid} already exists")
+    scope = []
+    for pattern in args.scope or []:
+        problem = scope_pattern_error(pattern)
+        if problem:
+            raise Refusal(f"--scope {pattern!r} {problem}")
+        if pattern not in scope:
+            scope.append(pattern)
+    required, optional = KINDS[kind]
+    if args.with_spec and "spec.md" not in optional:
+        raise Refusal(f"--with-spec is only allowed for kinds with an optional spec.md: {sorted(k for k, (_, o) in KINDS.items() if 'spec.md' in o)}")
+    roots = {}
+    for name in BASELINE:
+        path = root / name
+        roots[name] = path.read_bytes() if path.is_file() else None
+    established = {n: data is not None and UNESTABLISHED.encode() not in data for n, data in roots.items()}
+    baseline = {}
+    if kind == "product-init":
+        if any(data is None for data in roots.values()) or any(established.values()):
+            raise Refusal("product-init needs root intent.md and spec.md that still carry the unestablished marker")
+    elif kind != "repository":
+        if not all(established.values()):
+            raise Refusal(f"{kind} changes inherit the root baseline, but root intent.md/spec.md are missing or unestablished; start with a product-init change")
+        baseline = {n: sha256_bytes(data) for n, data in roots.items()}
+    head = git(root, "rev-parse", "--verify", "--quiet", "HEAD^{commit}", check=False)
+    if not head:
+        raise Refusal("the repository has no commit to use as the change base")
+    change = {
+        "schema": SCHEMA,
+        "id": cid,
+        "kind": kind,
+        "title": args.title.strip(),
+        "base": {"ref": load_config(root).get("baseline_branch", "main"), "commit": head.strip()},
+        "baseline": baseline,
+        "write_scope": scope,
+        "approvals": [],
+    }
+    files = {"change.json": (json.dumps(change, indent=2) + "\n").encode(), "plan.md": plan_skeleton(root)}
+    for name in sorted((required | ({"spec.md"} if args.with_spec else set())) - {"plan.md"}):
+        if roots.get(name) is None:
+            raise Refusal(f"root {name} does not exist")
+        files[name] = roots[name]
+    return files
+
+
+def cmd_new(args) -> int:
+    root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
+    try:
+        files = new_packet_files(root, args)
+    except Refusal as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 1
+    changes = root / CHANGES
+    created_changes = not changes.exists()
+    staging = changes / f".new-{args.id}-{os.getpid()}"
+    made = done = False
+    try:
+        staging.mkdir(parents=True)
+        made = True
+        for rel, data in files.items():
+            (staging / rel).write_bytes(data)
+        staging.rename(changes / args.id)
+        done = True
+    except OSError as exc:
+        print(f"refused: cannot create {CHANGES}/{args.id}: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        if not done:
+            if made:
+                shutil.rmtree(staging, ignore_errors=True)
+            if created_changes:
+                shutil.rmtree(changes, ignore_errors=True)
+    for rel in files:
+        print(f"created {CHANGES}/{args.id}/{rel}")
+    if args.kind == "product-init":
+        print("remove the unestablished marker from the copied intent.md and spec.md while drafting them")
+    print(f"base.commit is {json.loads(files['change.json'])['base']['commit']} (HEAD); run new from the change's branch point")
+    print(f"next: python3 scripts/repo.py status --change {args.id}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="repo.py", description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1042,6 +1147,12 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--group", action="append", help="only run checks in this group (repeatable); others are reported not-run")
     verify.add_argument("--dry-run", action="store_true", help="report routing without running checks")
     verify.add_argument("--evidence-dir", help="evidence root (default: .evidence/)")
+    new = sub.add_parser("new", help="create a change packet (no branch, commit or approval)")
+    new.add_argument("id", help="change id")
+    new.add_argument("--kind", required=True, help=f"one of {', '.join(sorted(KINDS))}")
+    new.add_argument("--title", required=True, help="one-line summary")
+    new.add_argument("--scope", action="append", metavar="PATTERN", help="write_scope pattern (repeatable)")
+    new.add_argument("--with-spec", action="store_true", help="also copy root spec.md (intent, incident, architecture)")
     return parser
 
 
@@ -1052,6 +1163,8 @@ def main(argv=None) -> int:
             return cmd_status(args)
         if args.command == "verify":
             return cmd_verify(args)
+        if args.command == "new":
+            return cmd_new(args)
     except GitError as exc:
         print(f"blocked: {exc}", file=sys.stderr)
         return 2
