@@ -36,6 +36,7 @@ Use the `sdlc-artifacts` skill whenever creating, revising, approving, or closin
 
 ## Canonical commands
 
+- `python3 scripts/repo.py new <id> --kind <kind> --title <summary> [--scope <pattern>]...`: creates a change packet (no branch, commit or approval).
 - `python3 scripts/repo.py status --change <id>`: lifecycle, approval, identity, write-scope, and agent-surface gates.
 - `python3 scripts/repo.py verify --change <id>`: runs the checks registered in `checks.json` that the diff routes to (`--full` for all), and writes evidence to `.evidence/`.
 
