@@ -28,7 +28,7 @@ Create a packet with `python3 scripts/repo.py new <id> --kind <kind> --title <su
 | `architecture` | plan | spec | yes |
 | `repository` | plan | none | no: process and tooling only; may not modify an established root intent or spec |
 
-Root `intent.md` and `spec.md` start with the `<!-- sdlc:baseline-unestablished -->` marker. The first product change is a `product-init` change, and it removes the marker when its accepted copies are merged. Until then, kinds that inherit the baseline are blocked.
+Root `intent.md` and `spec.md` start with the `<!-- sdlc:baseline-unestablished -->` marker. The first product change is a `product-init` change, and it removes the marker when its accepted copies are merged. Until then, kinds that inherit the baseline are blocked. An existing product whose root `intent.md` and `spec.md` have no marker is already established: it adopts the template through the template release's `docs/adoption.md`, not through `product-init`.
 
 ## Computed state
 
